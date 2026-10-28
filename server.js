@@ -221,6 +221,31 @@ async function constructServer(moduleDefs) {
   })
 
   /**
+   * Rewrite NetEase media URLs from http to https, so HTTPS web
+   * clients (e.g. iOS Safari / PWA) do not block audio as mixed content.
+   */
+  app.use((req, res, next) => {
+    const originalJson = res.json.bind(res)
+    res.json = (body) => {
+      try {
+        const text = JSON.stringify(body)
+        if (text && text.includes('http://')) {
+          body = JSON.parse(
+            text.replace(
+              /http:\/\/([\w.-]*\.)?music\.126\.net/g,
+              (m, sub) => `https://${sub || ''}music.126.net`,
+            ),
+          )
+        }
+      } catch (e) {
+        // keep the original body on any error
+      }
+      return originalJson(body)
+    }
+    next()
+  })
+
+  /**
    * Cookie Parser
    */
   app.use((req, _, next) => {
